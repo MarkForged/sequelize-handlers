@@ -18,13 +18,15 @@ function parse(params, { rawAttributes }) {
         'fields',
         'limit',
         'offset',
-        'sort'
+        'sort',
+        'include'
     ];
     
     options.attributes = parseString(params.fields);
     options.limit = parseInteger(params.limit);
     options.offset = parseInteger(params.offset);
     options.order = parseSort(params.sort);
+    options.include = parseJson(params.include);
     
     _(params)
         .omit(keywords)

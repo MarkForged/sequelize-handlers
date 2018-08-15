@@ -129,19 +129,35 @@ class ModelHandler {
         ];
     }
     
-    findOne(params, options) {
+    findOne(params, options, allowedArgs = ["where", "attributes", "limit", "offset", "order"]) {
         options = _.merge(parse(params, this.model), options);
+
+        options = _.pick(options, ...allowedArgs)
+
+        if (options.include != null) {
+            for (var i = 0; i < options.include.length; i++) {
+                options.include[i] = this.model.sequelize.models[options.include[i]];
+            }
+        }
 
         return this.model.findOne(options);
     }
     
-    findAndCountAll(params, options) {
+    findAndCountAll(params, options, allowedArgs = ["where", "attributes", "limit", "offset", "order"]) {
         let parsed = parse(params, this.model);
         
         options = _(parsed)
             .defaults(this.defaults)
             .merge(options)
             .value();
+
+        options = _.pick(options, ...allowedArgs)
+
+        if (options.include != null) {
+            for (var i = 0; i < options.include.length; i++) {
+                options.include[i] = this.model.sequelize.models[options.include[i]];
+            }
+        }
         
         return this.model
             .findAndCountAll(options)
