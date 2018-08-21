@@ -30,8 +30,9 @@ class ModelHandler {
     
     get() {
         const handle = (req, res, next) => {
+            var params = Object.assign(req.query, req.params);
             this
-                .findOne(req.params, req.options)
+                .findOne(params, req.options)
                 .then(respond)
                 .catch(next);
             
@@ -52,14 +53,14 @@ class ModelHandler {
     
     query() {
         const handle = (req, res, next) => {
+            var params = Object.assign(req.query, req.params);
             this
-                .findAndCountAll(req.query, req.options)
+                .findAndCountAll(params, req.options)
                 .then(respond)
                 .catch(next);
             
             function respond({ rows, start, end, count }) {
                 res.set('Content-Range', `${start}-${end}/${count}`);
-                
                 if (count > end) {
                     res.status(206);
                 } else {
@@ -78,8 +79,9 @@ class ModelHandler {
     
     remove() {
         const handle = (req, res, next) => {
+            var params = Object.assign(req.query, req.params);
             this
-                .findOne(req.params)
+                .findOne(params)
                 .then(destroy)
                 .then(respond)
                 .catch(next);
@@ -104,8 +106,9 @@ class ModelHandler {
     
     update() {
         const handle = (req, res, next) => {
+            var params = Object.assign(req.query, req.params);
             this
-                .findOne(req.params)
+                .findOne(params)
                 .then(updateAttributes)
                 .then(respond)
                 .catch(next);
@@ -132,7 +135,7 @@ class ModelHandler {
     findOne(params, options, allowedArgs = ["where", "attributes", "limit", "offset", "order"]) {
         options = _.merge(parse(params, this.model), options);
 
-        options = _.pick(options, ...allowedArgs)
+        options = _.pick(options, ...allowedArgs);
 
         if (options.include != null) {
             for (var i = 0; i < options.include.length; i++) {
