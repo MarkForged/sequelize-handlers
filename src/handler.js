@@ -4,10 +4,9 @@ const { parse } = require('./parser');
 const { raw } = require('./transforms');
 
 class ModelHandler {
-    constructor(model, defaults = { limit: 50, offset: 0 }, allowedArgs = ["where", "attributes", "limit", "offset", "order"]) {
+    constructor(model, defaults = { limit: 50, offset: 0 }) {
         this.model = model;
         this.defaults = defaults;
-        this.allowedArgs = allowedArgs;
     }
     
     create() {
@@ -29,11 +28,17 @@ class ModelHandler {
         ];
     }
     
-    get() {
+    get(options) {
+        if (options != null) {
+            var allowAssociations = options.allowAssociations;
+        } else {
+            var allowAssociations = false;
+        };
+
         const handle = (req, res, next) => {
             var params = Object.assign(req.query, req.params);
             this
-                .findOne(params, req.options)
+                .findOne(params, req.options, allowAssociations)
                 .then(respond)
                 .catch(next);
             
@@ -52,10 +57,16 @@ class ModelHandler {
         ];
     }
     
-    query() {
+    query(options) {
+        if (options != null) {
+            var allowAssociations = options.allowAssociations;
+        } else {
+            var allowAssociations = false;
+        };
+
         const handle = (req, res, next) => {
             this
-                .findAndCountAll(req.query, req.options)
+                .findAndCountAll(req.query, req.options, false)
                 .then(respond)
                 .catch(next);
             
@@ -80,7 +91,7 @@ class ModelHandler {
     remove() {
         const handle = (req, res, next) => {
             this
-                .findOne(req.params)
+                .findOne(req.params, null, false)
                 .then(destroy)
                 .then(respond)
                 .catch(next);
@@ -106,7 +117,7 @@ class ModelHandler {
     update() {
         const handle = (req, res, next) => {
             this
-                .findOne(req.params)
+                .findOne(req.params, null, false)
                 .then(updateAttributes)
                 .then(respond)
                 .catch(next);
@@ -130,10 +141,10 @@ class ModelHandler {
         ];
     }
     
-    findOne(params, options) {
+    findOne(params, options, withAssociations) {
         options = _.merge(parse(params, this.model), options);
 
-        options = _.pick(options, ...this.allowedArgs);
+        if (!withAssociations) options.include = null;
 
         if (options.include != null) {
             for (var i = 0; i < options.include.length; i++) {
@@ -144,7 +155,7 @@ class ModelHandler {
         return this.model.findOne(options);
     }
     
-    findAndCountAll(params, options) {
+    findAndCountAll(params, options, withAssociations) {
         let parsed = parse(params, this.model);
         
         options = _(parsed)
@@ -152,7 +163,7 @@ class ModelHandler {
             .merge(options)
             .value();
 
-        options = _.pick(options, ...this.allowedArgs)
+        if (!withAssociations) options.include = null;
 
         if (options.include != null) {
             for (var i = 0; i < options.include.length; i++) {
