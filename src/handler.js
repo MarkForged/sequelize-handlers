@@ -4,9 +4,10 @@ const { parse } = require('./parser');
 const { raw } = require('./transforms');
 
 class ModelHandler {
-    constructor(model, defaults = { limit: 50, offset: 0 }) {
+    constructor(model, defaults = { limit: 50, offset: 0 }, allowedArgs = ["where", "attributes", "limit", "offset", "order"]) {
         this.model = model;
         this.defaults = defaults;
+        this.allowedArgs = allowedArgs;
     }
     
     create() {
@@ -53,9 +54,8 @@ class ModelHandler {
     
     query() {
         const handle = (req, res, next) => {
-            var params = Object.assign(req.query, req.params);
             this
-                .findAndCountAll(params, req.options)
+                .findAndCountAll(req.query, req.options)
                 .then(respond)
                 .catch(next);
             
@@ -79,9 +79,8 @@ class ModelHandler {
     
     remove() {
         const handle = (req, res, next) => {
-            var params = Object.assign(req.query, req.params);
             this
-                .findOne(params)
+                .findOne(req.params)
                 .then(destroy)
                 .then(respond)
                 .catch(next);
@@ -106,9 +105,8 @@ class ModelHandler {
     
     update() {
         const handle = (req, res, next) => {
-            var params = Object.assign(req.query, req.params);
             this
-                .findOne(params)
+                .findOne(req.params)
                 .then(updateAttributes)
                 .then(respond)
                 .catch(next);
@@ -132,10 +130,10 @@ class ModelHandler {
         ];
     }
     
-    findOne(params, options, allowedArgs = ["where", "attributes", "limit", "offset", "order"]) {
+    findOne(params, options) {
         options = _.merge(parse(params, this.model), options);
 
-        options = _.pick(options, ...allowedArgs);
+        options = _.pick(options, ...this.allowedArgs);
 
         if (options.include != null) {
             for (var i = 0; i < options.include.length; i++) {
@@ -146,7 +144,7 @@ class ModelHandler {
         return this.model.findOne(options);
     }
     
-    findAndCountAll(params, options, allowedArgs = ["where", "attributes", "limit", "offset", "order"]) {
+    findAndCountAll(params, options) {
         let parsed = parse(params, this.model);
         
         options = _(parsed)
@@ -154,7 +152,7 @@ class ModelHandler {
             .merge(options)
             .value();
 
-        options = _.pick(options, ...allowedArgs)
+        options = _.pick(options, ...this.allowedArgs)
 
         if (options.include != null) {
             for (var i = 0; i < options.include.length; i++) {
