@@ -1,4 +1,5 @@
 const _ = require('lodash');
+const q = require('q');
 const { HttpStatusError } = require('./errors');
 const { parse } = require('./parser');
 const { raw } = require('./transforms');
@@ -9,13 +10,32 @@ class ModelHandler {
         this.defaults = defaults;
     }
     
-    create() {
+    create(options = {updateAssociations: false}) {
         const handle = (req, res, next) => {
-            this.model
-                .create(req.body)
-                .then(respond)
-                .catch(next);
+            if (options.updateAssociations) {
+                this.model
+                    .create(req.body)
+                    .then(updateAssociations)
+                    .then(respond)
+                    .catch(next);
+            } else {
+                this.model
+                    .create(req.body)
+                    .then(respond)
+                    .catch(next);
+            }
             
+            var model = this.model;
+            function updateAssociations(row) {
+                var prom = [];
+                for (var association in model.associations) {
+                    if (req.body[association] != null) {
+                        prom.push(row['set' + association](req.body[association]));
+                    }
+                }
+                return q.all(prom);
+            }
+
             function respond(row) {
                 res.status(201);
                 res.send(res.transform(row));
@@ -28,17 +48,11 @@ class ModelHandler {
         ];
     }
     
-    get(options) {
-        if (options != null) {
-            var allowAssociations = options.allowAssociations;
-        } else {
-            var allowAssociations = false;
-        };
-
+    get(options = {includeAssociations: false}) {
         const handle = (req, res, next) => {
             var params = Object.assign(req.query, req.params);
             this
-                .findOne(params, req.options, allowAssociations)
+                .findOne(params, req.options, options.includeAssociations)
                 .then(respond)
                 .catch(next);
             
@@ -57,16 +71,15 @@ class ModelHandler {
         ];
     }
     
-    query(options) {
-        if (options != null) {
-            var allowAssociations = options.allowAssociations;
-        } else {
-            var allowAssociations = false;
-        };
-
+    query(options = {includeAssociations: false, queryDeleted: true}) {
         const handle = (req, res, next) => {
+            if (!options.queryDeleted) {
+                // only return those that haven't been deleted, unless deleted_at specified
+                if (!req.query.deleted_at) req.query.deleted_at = 'null';
+            }
+
             this
-                .findAndCountAll(req.query, req.options, false)
+                .findAndCountAll(req.query, req.options, options.includeAssociations)
                 .then(respond)
                 .catch(next);
             
@@ -88,13 +101,21 @@ class ModelHandler {
         ];
     }
     
-    remove() {
+    remove(options = {softDelete: false}) {
         const handle = (req, res, next) => {
-            this
+            if (options.softDelete) {
+                return this
+                .findOne(req.params)
+                .then(updateDeletedAt)
+                .then(respond)
+                .catch(next);
+            } else {
+                return this
                 .findOne(req.params, null, false)
                 .then(destroy)
                 .then(respond)
                 .catch(next);
+            }
             
             function destroy(row) {
                 if (!row) {
@@ -103,6 +124,11 @@ class ModelHandler {
                 
                 return row.destroy();
             }
+
+            function updateDeletedAt(row) {
+                if (!row) throw new HttpStatusError(404, 'Not Found');
+                return row.updateAttributes({ deleted_at: Date.now() });
+            };
             
             function respond() {
                 res.sendStatus(204);
@@ -110,24 +136,45 @@ class ModelHandler {
         };
         
         return [
+            raw,
             handle
         ];
     }
     
-    update() {
+    update(options = {updateAssociations: false}) {
         const handle = (req, res, next) => {
-            this
+            if (options.updateAssociations) {
+                this
+                .findOne(req.params, null, false)
+                .then(updateAttributes)
+                .then(updateAssociations)
+                .then(respond)
+                .catch(next);
+            } else {
+                this
                 .findOne(req.params, null, false)
                 .then(updateAttributes)
                 .then(respond)
                 .catch(next);
-                
+            }
+
             function updateAttributes(row) {
                 if (!row) {
                     throw new HttpStatusError(404, 'Not Found');
                 }
                 
                 return row.updateAttributes(req.body);
+            }
+
+            var model = this.model;
+            function updateAssociations(row) {
+                var prom = [];
+                for (var association in model.associations) {
+                    if (req.body[association] != null) {
+                        prom.push(row['set' + association](req.body[association]));
+                    }
+                }
+                return q.all(prom);
             }
             
             function respond(row) {
