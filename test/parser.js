@@ -8,7 +8,7 @@ expect = chai.expect;
 
 describe('Parser', function() {
     describe('parse()', function() {
-        it('should parse basic params', function() {
+        it('should parse a combination of basic params', function() {
             params = {
                 fields: 'username,birthday',
                 limit: 10,
@@ -29,33 +29,18 @@ describe('Parser', function() {
                     ['birthday', 'DESC']
                 ]
             }
-            expect(output).to.deep.equal(expected);
+            expect(output.attributes).to.deep.equal(expected.attributes);
+            expect(output.limit).to.equal(expected.limit);
+            expect(output.offset).to.equal(expected.offset);
+            expect(output.where).to.deep.equal(expected.where);
+            expect(output.order).to.deep.equal(expected.order);
         });
         it('should parse "where" params', function() {
             params = {
-                fields: 'username,birthday',
-                limit: 10,
-                offset: 0,
-                sort: 'username,-birthday',
                 username: 'test'
             }
             var output = parse(params, User);
-            expected = {
-                attributes: [
-                    'username',
-                    'birthday'
-                ],
-                limit: 10,
-                offset: 0,
-                where: {
-                    'username': ['test']
-                },
-                order: [
-                    ['username', 'ASC'],
-                    ['birthday', 'DESC']
-                ]
-            }
-            expect(output).to.deep.equal(expected);
+            expect(output.where.username).to.deep.equal(['test']);
         });
     });
 
