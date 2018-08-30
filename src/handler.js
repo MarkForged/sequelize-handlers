@@ -1,5 +1,4 @@
 const _ = require('lodash');
-const q = require('q');
 const { HttpStatusError } = require('./errors');
 const { parse } = require('./parser');
 const { raw } = require('./transforms');
@@ -33,7 +32,7 @@ class ModelHandler {
                         prom.push(row['set' + association](req.body[association]));
                     }
                 }
-                return q.all(prom);
+                return Promise.all(prom);
             }
 
             function respond(row) {
@@ -174,7 +173,7 @@ class ModelHandler {
                         prom.push(row['set' + association](req.body[association]));
                     }
                 }
-                return q.all(prom);
+                return Promise.all(prom);
             }
             
             function respond(row) {
